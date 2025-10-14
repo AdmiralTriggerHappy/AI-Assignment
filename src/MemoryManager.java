@@ -53,17 +53,40 @@ public class MemoryManager {
 	}
 
 	// ------------------ GLOBAL REPLACEMENT ------------------
-	private void handleGlobalRequest(Process p, int page, int currentTime) {
-		Frame free = freeFrame();
-		Frame victim;
+	private Frame lastAllocatedFrame = null; // ADD THIS FIELD
 
-		if (free != null) {
-			victim = free;
-		} else {
-			victim = globalQueue.poll();
+	private void handleGlobalRequest(Process p, int page, int currentTime) {
+		Frame victim = null;
+		boolean usedFreeFrame = false;
+
+		// First, try to find a free frame
+		for (Frame f : frames) {
+			if (f.isFree()) {
+				victim = f;
+				usedFreeFrame = true;
+				break;
+			}
 		}
 
-		loadInto(victim, p, page, currentTime, true);
+		// If no free frame, use FIFO to evict
+		if (victim == null) {
+			victim = globalQueue.poll();
+			System.out.printf("[GLOBAL] Time %d: %s page %d evicting %s page %d from frame %d%n",
+					currentTime, p.getName(), page, victim.getProcess(), victim.getPage(), frames.indexOf(victim));
+		} else {
+			System.out.printf("[GLOBAL] Time %d: %s page %d using FREE frame %d%n",
+					currentTime, p.getName(), page, frames.indexOf(victim));
+		}
+
+		// Load page into frame
+		victim.set(p.getName(), page, currentTime);
+
+		// Add to queue IMMEDIATELY when fault occurs
+		globalQueue.offer(victim);
+	}
+
+	public Frame getLastAllocatedFrame() {
+		return lastAllocatedFrame;
 	}
 
 	// ------------------ LOCAL REPLACEMENT ------------------
@@ -119,4 +142,12 @@ public class MemoryManager {
 
 
 	}
+
+	public void addFrameToGlobalQueue(Frame f) {
+		if (global && !globalQueue.contains(f)) {
+			globalQueue.offer(f);
+		}
+	}
+
+
 }

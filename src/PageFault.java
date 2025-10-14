@@ -4,6 +4,7 @@ public class PageFault {
 	private final int faultTime;
 	private final int completionTime;
 
+
 	public PageFault(Process process, int page, int faultTime, int completionTime) {
 		this.process = process;
 		this.page = page;
@@ -26,4 +27,6 @@ public class PageFault {
 	public int getCompletionTime() {
 		return completionTime;
 	}
+
+
 }

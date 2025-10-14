@@ -20,6 +20,7 @@ public class Simulator {
 		this.global = global;
 		this.memory = new MemoryManager(totalFrames, this.processes, global);
 
+		// Add all processes to ready queue at time 0
 		for (Process p : this.processes) {
 			readyQueue.offer(p);
 			needsQuantumReset.add(p);
@@ -28,16 +29,20 @@ public class Simulator {
 
 	public void run() {
 		while (!allFinished()) {
+			// First, check for any completed I/O
 			checkCompletedIO();
 
+			// If CPU is idle, schedule next process
 			if (current == null && !readyQueue.isEmpty()) {
 				current = readyQueue.poll();
+				// Only reset quantum if needed (first time or after quantum expiry)
 				if (needsQuantumReset.contains(current)) {
 					current.resetQuantum(quantum);
 					needsQuantumReset.remove(current);
 				}
 			}
 
+			// Execute current process or advance time if idle
 			if (current != null) {
 				executeCurrentProcess();
 			} else {
@@ -49,19 +54,21 @@ public class Simulator {
 	private void executeCurrentProcess() {
 		Integer nextPage = current.peekNextPage();
 
-
+		// Process finished
 		if (nextPage == null) {
 			current.setFinishTime(time);
 			current = null;
 			return;
 		}
 
+		// Check if page is in memory
 		if (memory.hasPage(current, nextPage)) {
+			// Page in memory - execute instruction
 			current.advancePage();
 			current.consumeQuantum();
 			time++;
 
-			// IMPORTANT: After time advances, check for completed I/O BEFORE handling quantum expiry
+			// After time advances, check for completed I/O BEFORE handling quantum expiry
 			Process quantumExpiredProcess = null;
 			if (current.peekNextPage() == null) {
 				current.setFinishTime(time);
@@ -74,15 +81,20 @@ public class Simulator {
 			// Check I/O completions at the new time
 			checkCompletedIO();
 
-			// Now add quantum-expired process (rule f: unblocked processes added first)
+			// Now add quantum-expired process (unblocked processes added first per rule f)
 			if (quantumExpiredProcess != null) {
 				readyQueue.offer(quantumExpiredProcess);
 				needsQuantumReset.add(quantumExpiredProcess);
 			}
 		} else {
+			// Page fault - process blocks (takes 0 time)
 			current.recordFault(time);
 			memory.requestPage(current, nextPage, time);
+
+			// Get the frame that was allocated and pass it to PageFault
+			Frame allocatedFrame = memory.getLastAllocatedFrame();
 			ioQueue.add(new PageFault(current, nextPage, time, time + 4));
+
 			current.block();
 			current = null;
 		}
@@ -102,11 +114,13 @@ public class Simulator {
 
 		completedFaults.sort(Comparator.comparingInt(PageFault::getFaultTime));
 
+		// Unblock processes and add to ready queue
 		for (PageFault pf : completedFaults) {
 			Process p = pf.getProcess();
 			p.unblock();
-			needsQuantumReset.add(p);  // ADD THIS LINE - reset quantum after page fault
+			needsQuantumReset.add(p);
 			readyQueue.offer(p);
+			// DO NOT add frame to queue here
 		}
 	}
 
