@@ -1,27 +1,41 @@
+/*
+ * Copyright (c) 2025 Andrew Wallace Student ID 3253268 For the University of Newcastle.
+ * Created with the assistance of Chat-GPT and Claude Generative AI
+ *
+ */
+
+// MemoryManager.java
 import java.util.*;
 
+/**
+ * The Memory Manager
+ */
 public class MemoryManager {
 	private final int totalFrames;
 	private final boolean global;
-	private final int perProcess; // only used for Fixed-Local
+	private final int perProcess;
 
 	private final List<Frame> frames = new ArrayList<>();
 	private final Map<String, Queue<Frame>> processFrames = new HashMap<>();
 	private final Queue<Frame> globalQueue = new LinkedList<>();
-	private Frame lastAllocatedFrame = null;
 
+	/**
+	 * Instantiates a new Memory manager.
+	 *
+	 * @param totalFrames the total frames
+	 * @param processes   the processes
+	 * @param global      the global
+	 */
 	public MemoryManager(int totalFrames, List<Process> processes, boolean global) {
 		this.totalFrames = totalFrames;
 		this.global = global;
 		this.perProcess = global ? -1 : totalFrames / processes.size();
 
-		// Initialize all frames
 		for (int i = 0; i < totalFrames; i++) {
 			frames.add(new Frame(i));
 		}
 
 		if (!global) {
-			// Pre-allocate frames to each process
 			int frameIndex = 0;
 			for (Process p : processes) {
 				Queue<Frame> q = new LinkedList<>();
@@ -34,7 +48,13 @@ public class MemoryManager {
 		}
 	}
 
-	// Check if process has page in memory
+	/**
+	 * Has page boolean.
+	 *
+	 * @param p    the p
+	 * @param page the page
+	 * @return the boolean
+	 */
 	public boolean hasPage(Process p, int page) {
 		for (Frame f : frames) {
 			if (!f.isFree() && f.getProcess().equals(p.getName()) && f.getPage() == page) {
@@ -44,51 +64,45 @@ public class MemoryManager {
 		return false;
 	}
 
-	// Handle page request
-	public void requestPage(Process p, int page, int currentTime) {
+	/**
+	 * Request page frame.
+	 *
+	 * @param p           the p
+	 * @param page        the page
+	 * @param currentTime the current time
+	 * @return the frame
+	 */
+	public Frame requestPage(Process p, int page, int currentTime) {
 		if (global) {
-			handleGlobalRequest(p, page, currentTime);
+			return handleGlobalRequest(p, page, currentTime);
 		} else {
-			handleLocalRequest(p, page, currentTime);
+			return handleLocalRequest(p, page, currentTime);
 		}
 	}
 
-	// ------------------ GLOBAL REPLACEMENT ------------------
-	private void handleGlobalRequest(Process p, int page, int currentTime) {
+	private Frame handleGlobalRequest(Process p, int page, int currentTime) {
 		Frame victim = null;
-		boolean usedFreeFrame = false;
 
-		// First, try to find a free frame
 		for (Frame f : frames) {
 			if (f.isFree()) {
 				victim = f;
-				usedFreeFrame = true;
 				break;
 			}
 		}
 
-		// If no free frame, use FIFO to evict
 		if (victim == null) {
 			victim = globalQueue.poll();
 		}
 
-		// Load page into frame
 		victim.set(p.getName(), page, currentTime);
-		lastAllocatedFrame = victim; // Store the allocated frame
 
-		// Add to queue IMMEDIATELY when fault occurs (FIFO order)
-		globalQueue.offer(victim);
+		// Don't add to queue yet - will be added when page completes loading
+		return victim;
 	}
 
-	public Frame getLastAllocatedFrame() {
-		return lastAllocatedFrame;
-	}
-
-	// ------------------ LOCAL REPLACEMENT ------------------
-	private void handleLocalRequest(Process p, int page, int currentTime) {
+	private Frame handleLocalRequest(Process p, int page, int currentTime) {
 		Queue<Frame> q = processFrames.get(p.getName());
 
-		// Find a free frame in the process's allocation
 		Frame free = null;
 		for (Frame f : q) {
 			if (f.isFree()) {
@@ -101,7 +115,6 @@ public class MemoryManager {
 		if (free != null) {
 			victim = free;
 		} else {
-			// FIFO: evict the oldest loaded page among this process's frames
 			victim = null;
 			long oldestTime = Long.MAX_VALUE;
 			for (Frame f : q) {
@@ -112,8 +125,19 @@ public class MemoryManager {
 			}
 		}
 
-		// Load page into frame
 		victim.set(p.getName(), page, currentTime);
-		lastAllocatedFrame = victim;
+		return victim;
+	}
+
+	/**
+	 * Add frame to global queue.
+	 *
+	 * @param f the f
+	 */
+	public void addFrameToGlobalQueue(Frame f) {
+		if (global && !globalQueue.contains(f)) {
+			globalQueue.offer(f);
+		}
 	}
 }
+

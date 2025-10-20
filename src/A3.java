@@ -5,8 +5,8 @@
  * Entry point for the simulation.
  * Usage: java A3 F Q process1.txt process2.txt ...
  *
- * Author: <Your Name>
- * Student ID: <Your Student ID>
+ * Author: Andrew Wallace using Claude and Chat-GPT
+ * Student ID: 3253268
  */
 
 import java.io.*;

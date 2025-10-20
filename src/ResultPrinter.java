@@ -1,6 +1,21 @@
+/*
+ * Copyright (c) 2025 Andrew Wallace Student ID 3253268 For the University of Newcastle.
+ * Created with the assistance of Chat-GPT and Claude Generative AI
+ *
+ */
+
 import java.util.*;
 
+/**
+ * The type Result printer.
+ */
 public class ResultPrinter {
+	/**
+	 * Print the results to console
+	 *
+	 * @param title the title
+	 * @param procs the procs
+	 */
 	public static void print(String title, List<Process> procs) {
 		System.out.println(title);
 		System.out.println("PID\tProcess\tTurnaround Time\t#Faults\tFault Times");
@@ -20,6 +35,7 @@ public class ResultPrinter {
 		System.out.println();
 	}
 
+	//Format the results
 	private static String formatFaultTimes(List<Integer> faultTimes) {
 		if (faultTimes.isEmpty()) {
 			return "{}";

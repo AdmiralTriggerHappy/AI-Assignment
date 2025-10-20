@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 Andrew Wallace Student ID 3253268 For the University of Newcastle.
+ * Created with the assistance of Chat-GPT and Claude Generative AI
+ *
+ */
+
 import java.io.*;
 import java.util.*;
 

@@ -1,5 +1,15 @@
+/*
+ * Copyright (c) 2025 Andrew Wallace Student ID 3253268 For the University of Newcastle.
+ * Created with the assistance of Chat-GPT and Claude Generative AI
+ *
+ */
+
+// Simulator.java
 import java.util.*;
 
+/**
+ * The type Simulator.
+ */
 public class Simulator {
 	private final int totalFrames;
 	private final int quantum;
@@ -9,11 +19,18 @@ public class Simulator {
 	private final Queue<Process> readyQueue = new LinkedList<>();
 	private final List<PageFault> ioQueue = new ArrayList<>();
 	private final Set<Process> needsQuantumReset = new HashSet<>();
-	private final Queue<Process> toAddToReadyQueue = new LinkedList<>();
 
 	private int time = 0;
 	private Process current = null;
 
+	/**
+	 * Instantiates a new Simulator.
+	 *
+	 * @param processes   the processes
+	 * @param totalFrames the total frames
+	 * @param quantum     the quantum
+	 * @param global      the global
+	 */
 	public Simulator(List<Process> processes, int totalFrames, int quantum, boolean global) {
 		this.processes = new ArrayList<>(processes);
 		this.totalFrames = totalFrames;
@@ -21,27 +38,19 @@ public class Simulator {
 		this.global = global;
 		this.memory = new MemoryManager(totalFrames, this.processes, global);
 
-		// Add all processes to ready queue at time 0
 		for (Process p : this.processes) {
 			readyQueue.offer(p);
 			needsQuantumReset.add(p);
 		}
 	}
 
+	/**
+	 * Run.
+	 */
 	public void run() {
 		while (!allFinished()) {
-			// Check for completed I/O - add unblocked processes to temp queue
 			checkCompletedIO();
 
-			// If current process expired quantum, add it to temp queue
-			// (This happens AFTER I/O check, so unblocked processes are added first per rule f)
-
-			// Add all pending processes from temp queue to ready queue
-			while (!toAddToReadyQueue.isEmpty()) {
-				readyQueue.offer(toAddToReadyQueue.poll());
-			}
-
-			// If CPU is idle, schedule next process
 			if (current == null && !readyQueue.isEmpty()) {
 				current = readyQueue.poll();
 				if (needsQuantumReset.contains(current)) {
@@ -50,82 +59,85 @@ public class Simulator {
 				}
 			}
 
-			// Execute current process or advance time if idle
 			if (current != null) {
-				executeOneStep();
+				executeCurrentProcess();
 			} else {
 				time++;
 			}
 		}
 	}
 
-	private void executeOneStep() {
+	/**
+	 * Execute the current Process
+	 */
+	private void executeCurrentProcess() {
 		Integer nextPage = current.peekNextPage();
 
-		// Process finished
 		if (nextPage == null) {
 			current.setFinishTime(time);
 			current = null;
 			return;
 		}
 
-		// Check if page is in memory
 		if (memory.hasPage(current, nextPage)) {
-			// Page HIT - execute instruction
 			current.advancePage();
 			current.consumeQuantum();
 			time++;
 
-			// After time advances, check for any I/O completions at this new time
-			checkCompletedIO();
-
-			// After advancing, check if done
+			Process quantumExpiredProcess = null;
 			if (current.peekNextPage() == null) {
 				current.setFinishTime(time);
 				current = null;
 			} else if (current.isQuantumExpired()) {
-				// Quantum expired - add to temp queue
-				// (I/O completions were already added via checkCompletedIO, so they're first per rule f)
-				toAddToReadyQueue.offer(current);
-				needsQuantumReset.add(current);
+				quantumExpiredProcess = current;
 				current = null;
 			}
+
+			checkCompletedIO();
+
+			if (quantumExpiredProcess != null) {
+				readyQueue.offer(quantumExpiredProcess);
+				needsQuantumReset.add(quantumExpiredProcess);
+			}
 		} else {
-			// Page FAULT - record fault and initiate I/O (no time advance)
 			current.recordFault(time);
-			memory.requestPage(current, nextPage, time);
-
-			// I/O takes 4 time units
-			ioQueue.add(new PageFault(current, nextPage, time, time + 4));
-
+			Frame allocatedFrame = memory.requestPage(current, nextPage, time);
+			ioQueue.add(new PageFault(current, nextPage, time, time + 4, allocatedFrame));
 			current.block();
 			current = null;
 		}
 	}
 
+	/**
+	 * Check for IO completion
+	 */
 	private void checkCompletedIO() {
 		List<PageFault> completedFaults = new ArrayList<>();
 
-		// Find all I/O operations that completed by current time
 		Iterator<PageFault> it = ioQueue.iterator();
 		while (it.hasNext()) {
 			PageFault pf = it.next();
-			if (pf.getCompletionTime() == time) {
+			if (pf.getCompletionTime() <= time) {
 				completedFaults.add(pf);
 				it.remove();
 			}
 		}
 
-		// Sort by fault time to maintain FIFO order
 		completedFaults.sort(Comparator.comparingInt(PageFault::getFaultTime));
 
-		// Unblock processes and add to temp queue first
-		// They will be added to ready queue before quantum-expired processes
+		// Unblock processes FIRST (without adding frames to queue yet)
 		for (PageFault pf : completedFaults) {
 			Process p = pf.getProcess();
 			p.unblock();
 			needsQuantumReset.add(p);
-			toAddToReadyQueue.offer(p);
+			readyQueue.offer(p);
+		}
+
+		// Add frames to queue AFTER new faults might have been processed
+		for (PageFault pf : completedFaults) {
+			if (global) {
+				memory.addFrameToGlobalQueue(pf.getFrame());
+			}
 		}
 	}
 
@@ -138,6 +150,11 @@ public class Simulator {
 		return true;
 	}
 
+	/**
+	 * Gets results.
+	 *
+	 * @return the results
+	 */
 	public List<Process> getResults() {
 		return processes;
 	}
