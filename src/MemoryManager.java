@@ -8,6 +8,7 @@ public class MemoryManager {
 	private final List<Frame> frames = new ArrayList<>();
 	private final Map<String, Queue<Frame>> processFrames = new HashMap<>();
 	private final Queue<Frame> globalQueue = new LinkedList<>();
+	private Frame lastAllocatedFrame = null;
 
 	public MemoryManager(int totalFrames, List<Process> processes, boolean global) {
 		this.totalFrames = totalFrames;
@@ -53,8 +54,6 @@ public class MemoryManager {
 	}
 
 	// ------------------ GLOBAL REPLACEMENT ------------------
-	private Frame lastAllocatedFrame = null; // ADD THIS FIELD
-
 	private void handleGlobalRequest(Process p, int page, int currentTime) {
 		Frame victim = null;
 		boolean usedFreeFrame = false;
@@ -71,17 +70,13 @@ public class MemoryManager {
 		// If no free frame, use FIFO to evict
 		if (victim == null) {
 			victim = globalQueue.poll();
-			System.out.printf("[GLOBAL] Time %d: %s page %d evicting %s page %d from frame %d%n",
-					currentTime, p.getName(), page, victim.getProcess(), victim.getPage(), frames.indexOf(victim));
-		} else {
-			System.out.printf("[GLOBAL] Time %d: %s page %d using FREE frame %d%n",
-					currentTime, p.getName(), page, frames.indexOf(victim));
 		}
 
 		// Load page into frame
 		victim.set(p.getName(), page, currentTime);
+		lastAllocatedFrame = victim; // Store the allocated frame
 
-		// Add to queue IMMEDIATELY when fault occurs
+		// Add to queue IMMEDIATELY when fault occurs (FIFO order)
 		globalQueue.offer(victim);
 	}
 
@@ -117,37 +112,8 @@ public class MemoryManager {
 			}
 		}
 
-		loadInto(victim, p, page, currentTime, false);
+		// Load page into frame
+		victim.set(p.getName(), page, currentTime);
+		lastAllocatedFrame = victim;
 	}
-
-	// ------------------ UTILITY ------------------
-	private Frame freeFrame() {
-		for (Frame f : frames) {
-			if (f.isFree()) {
-				return f;
-			}
-		}
-		return null;
-	}
-
-	private void loadInto(Frame f, Process p, int page, int currentTime, boolean isGlobal) {
-		String oldProcess = f.getProcess();
-		int oldPage = f.getPage();
-
-		f.set(p.getName(), page, currentTime);
-
-		if (isGlobal) {
-			globalQueue.offer(f);
-		}
-
-
-	}
-
-	public void addFrameToGlobalQueue(Frame f) {
-		if (global && !globalQueue.contains(f)) {
-			globalQueue.offer(f);
-		}
-	}
-
-
 }

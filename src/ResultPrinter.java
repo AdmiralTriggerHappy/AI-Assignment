@@ -13,7 +13,7 @@ public class ResultPrinter {
 			System.out.printf("%d\t%s\t%d\t\t%d\t%s%n",
 					pid++,
 					p.getName(),
-					p.getFinishTime(),
+					p.getTurnaroundTime(),
 					p.getFaultCount(),
 					faultTimesStr);
 		}
