@@ -193,7 +193,7 @@ public class Process implements Cloneable {
 	 * Override the Clone process to enable deep copying of a process
 	 */
 	@Override
-	public Process clone() {
+	protected Process clone() {
 		Queue<Integer> pagesCopy = new LinkedList<>(this.pages);
 		Process copy = new Process(this.name, pagesCopy, this.arrivalTime);
 		copy.finishTime = this.finishTime;

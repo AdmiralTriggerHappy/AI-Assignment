@@ -8,13 +8,8 @@
  * The type Page fault.
  */
 
-public class PageFault {
-	private final Process process;
-	private final int page;
-	private final int faultTime;
-	private final int completionTime;
-	private final Frame frame;
-
+public record PageFault(Process process, int page, int faultTime, int completionTime, Frame frame)
+{
 	/**
 	 * Instantiates a new Page fault.
 	 *
@@ -24,12 +19,8 @@ public class PageFault {
 	 * @param completionTime the completion time
 	 * @param frame          the frame
 	 */
-	public PageFault(Process process, int page, int faultTime, int completionTime, Frame frame) {
-		this.process = process;
-		this.page = page;
-		this.faultTime = faultTime;
-		this.completionTime = completionTime;
-		this.frame = frame;
+	public PageFault
+	{
 	}
 
 	/**
@@ -37,7 +28,9 @@ public class PageFault {
 	 *
 	 * @return the process
 	 */
-	public Process getProcess() {
+	@Override
+	public Process process()
+	{
 		return process;
 	}
 
@@ -46,7 +39,9 @@ public class PageFault {
 	 *
 	 * @return the page
 	 */
-	public int getPage() {
+	@Override
+	public int page()
+	{
 		return page;
 	}
 
@@ -55,7 +50,9 @@ public class PageFault {
 	 *
 	 * @return the fault time
 	 */
-	public int getFaultTime() {
+	@Override
+	public int faultTime()
+	{
 		return faultTime;
 	}
 
@@ -64,7 +61,9 @@ public class PageFault {
 	 *
 	 * @return the completion time
 	 */
-	public int getCompletionTime() {
+	@Override
+	public int completionTime()
+	{
 		return completionTime;
 	}
 
@@ -73,7 +72,9 @@ public class PageFault {
 	 *
 	 * @return the frame
 	 */
-	public Frame getFrame() {
+	@Override
+	public Frame frame()
+	{
 		return frame;
 	}
 }

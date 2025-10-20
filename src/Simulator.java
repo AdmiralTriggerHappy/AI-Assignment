@@ -11,7 +11,6 @@ import java.util.*;
  * The type Simulator.
  */
 public class Simulator {
-	private final int totalFrames;
 	private final int quantum;
 	private final boolean global;
 	private final List<Process> processes;
@@ -33,7 +32,6 @@ public class Simulator {
 	 */
 	public Simulator(List<Process> processes, int totalFrames, int quantum, boolean global) {
 		this.processes = new ArrayList<>(processes);
-		this.totalFrames = totalFrames;
 		this.quantum = quantum;
 		this.global = global;
 		this.memory = new MemoryManager(totalFrames, this.processes, global);
@@ -117,17 +115,17 @@ public class Simulator {
 		Iterator<PageFault> it = ioQueue.iterator();
 		while (it.hasNext()) {
 			PageFault pf = it.next();
-			if (pf.getCompletionTime() <= time) {
+			if (pf.completionTime() <= time) {
 				completedFaults.add(pf);
 				it.remove();
 			}
 		}
 
-		completedFaults.sort(Comparator.comparingInt(PageFault::getFaultTime));
+		completedFaults.sort(Comparator.comparingInt(PageFault::faultTime));
 
 		// Unblock processes FIRST (without adding frames to queue yet)
 		for (PageFault pf : completedFaults) {
-			Process p = pf.getProcess();
+			Process p = pf.process();
 			p.unblock();
 			needsQuantumReset.add(p);
 			readyQueue.offer(p);
@@ -136,7 +134,7 @@ public class Simulator {
 		// Add frames to queue AFTER new faults might have been processed
 		for (PageFault pf : completedFaults) {
 			if (global) {
-				memory.addFrameToGlobalQueue(pf.getFrame());
+				memory.addFrameToGlobalQueue(pf.frame());
 			}
 		}
 	}

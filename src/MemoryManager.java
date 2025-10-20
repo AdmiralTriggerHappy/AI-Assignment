@@ -11,9 +11,7 @@ import java.util.*;
  * The Memory Manager
  */
 public class MemoryManager {
-	private final int totalFrames;
 	private final boolean global;
-	private final int perProcess;
 
 	private final List<Frame> frames = new ArrayList<>();
 	private final Map<String, Queue<Frame>> processFrames = new HashMap<>();
@@ -27,9 +25,8 @@ public class MemoryManager {
 	 * @param global      the global
 	 */
 	public MemoryManager(int totalFrames, List<Process> processes, boolean global) {
-		this.totalFrames = totalFrames;
 		this.global = global;
-		this.perProcess = global ? -1 : totalFrames / processes.size();
+		int perProcess = global ? -1 : totalFrames / processes.size();
 
 		for (int i = 0; i < totalFrames; i++) {
 			frames.add(new Frame(i));
